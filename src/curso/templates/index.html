@@ -2,28 +2,180 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Extractor de texto PDF</title>
   <style>
-    body { font-family: sans-serif; max-width: 700px; margin: 40px auto; padding: 0 16px; }
-    textarea { width: 100%; height: 300px; margin-top: 16px; }
-    .error { color: #b00020; }
+    :root {
+      --blue: #007aff;
+      --red: #ff3b30;
+      --gray-bg: #f2f2f7;
+      --card-bg: #ffffff;
+      --text: #1c1c1e;
+      --text-secondary: #8e8e93;
+      --border: #e5e5ea;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--gray-bg);
+      color: var(--text);
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 24px 16px 64px;
+    }
+    h1 { font-size: 28px; font-weight: 700; margin: 8px 0 20px; }
+    h2 { font-size: 18px; font-weight: 600; margin: 28px 0 12px; }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+      margin-bottom: 16px;
+    }
+
+    .upload-input {
+      display: block;
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--gray-bg);
+      font-size: 15px;
+      margin-bottom: 14px;
+    }
+
+    .btn {
+      appearance: none;
+      border: none;
+      border-radius: 980px;
+      padding: 12px 22px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.08s ease, opacity 0.15s ease;
+    }
+    .btn:active { transform: scale(0.96); opacity: 0.85; }
+
+    .btn-primary { background: var(--blue); color: #fff; }
+    .btn-danger { background: #ffe5e3; color: var(--red); }
+    .btn-danger-solid { background: var(--red); color: #fff; }
+    .btn-block { width: 100%; }
+    .btn-small { padding: 8px 16px; font-size: 13px; white-space: nowrap; }
+
+    .btn-row { display: flex; gap: 10px; margin-top: 14px; }
+    .btn-row form { flex: 1; margin: 0; }
+
+    .error {
+      color: var(--red);
+      background: #ffe5e3;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      margin-bottom: 14px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 220px;
+      margin-top: 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 12px;
+      font-size: 14px;
+      background: var(--gray-bg);
+      resize: vertical;
+      font-family: inherit;
+    }
+
+    .filename { font-size: 14px; color: var(--text-secondary); margin: 0; }
+
+    .doc-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .doc-item:last-child { border-bottom: none; }
+    .doc-info { flex: 1; min-width: 0; }
+    .doc-name {
+      font-size: 15px;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .doc-date { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+    .doc-item form { margin: 0; flex-shrink: 0; }
+
+    .empty { color: var(--text-secondary); font-size: 14px; text-align: center; padding: 8px 0; }
+
+    details { margin-top: 6px; }
+    details summary {
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--blue);
+      font-weight: 500;
+      list-style: none;
+    }
+    details summary::-webkit-details-marker { display: none; }
+    details textarea { height: 140px; }
   </style>
 </head>
 <body>
   <h1>Extractor de texto PDF</h1>
 
-  <form method="post" enctype="multipart/form-data">
-    <input type="file" name="pdf_file" accept="application/pdf" required>
-    <button type="submit">Subir y extraer</button>
-  </form>
+  <div class="card">
+    <form method="post" enctype="multipart/form-data">
+      <input class="upload-input" type="file" name="pdf_file" accept="application/pdf" required>
+      <button class="btn btn-primary btn-block" type="submit">Subir y extraer</button>
+    </form>
+  </div>
 
   {% if error %}
     <p class="error">{{ error }}</p>
   {% endif %}
 
   {% if filename %}
-    <p>Archivo procesado: <strong>{{ filename }}</strong></p>
-    <textarea readonly>{{ extracted_text }}</textarea>
+    <div class="card">
+      <p class="filename">Archivo procesado: <strong>{{ filename }}</strong></p>
+      <textarea readonly>{{ extracted_text }}</textarea>
+      <div class="btn-row">
+        <form method="post" action="{{ url_for('pdf.save') }}">
+          <input type="hidden" name="filename" value="{{ filename }}">
+          <button class="btn btn-primary btn-block" type="submit">Guardar en la lista</button>
+        </form>
+        <form method="post" action="{{ url_for('pdf.discard') }}">
+          <input type="hidden" name="filename" value="{{ filename }}">
+          <button class="btn btn-danger btn-block" type="submit">Descartar</button>
+        </form>
+      </div>
+    </div>
   {% endif %}
+
+  <h2>Documentos guardados</h2>
+  <div class="card">
+    {% if documents %}
+      {% for doc in documents %}
+        <div class="doc-item">
+          <div class="doc-info">
+            <div class="doc-name">{{ doc.filename }}</div>
+            <div class="doc-date">{{ doc.created_at[:19].replace("T", " ") }}</div>
+            <details>
+              <summary>Ver texto</summary>
+              <textarea readonly>{{ doc.text }}</textarea>
+            </details>
+          </div>
+          <form method="post" action="{{ url_for('pdf.delete_document', doc_id=doc.id) }}">
+            <button class="btn btn-danger-solid btn-small" type="submit">Eliminar</button>
+          </form>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="empty">Todavía no has guardado ningún documento.</p>
+    {% endif %}
+  </div>
 </body>
 </html>
